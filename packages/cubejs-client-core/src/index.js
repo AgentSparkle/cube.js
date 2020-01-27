@@ -6,21 +6,25 @@
  * @menuOrder 2
  */
 
-import ResultSet from './ResultSet';
-import SqlQuery from './SqlQuery';
-import Meta from './Meta';
-import ProgressResult from './ProgressResult';
-import HttpTransport from './HttpTransport';
+import ResultSet from "./ResultSet";
+import SqlQuery from "./SqlQuery";
+import Meta from "./Meta";
+import ProgressResult from "./ProgressResult";
+import HttpTransport from "./HttpTransport";
 
 const API_URL = process.env.CUBEJS_API_URL;
 
 let mutexCounter = 0;
 
-const MUTEX_ERROR = 'Mutex has been changed';
+const MUTEX_ERROR = "Mutex has been changed";
 
-const mutexPromise = (promise) => new Promise((resolve, reject) => {
-  promise.then(r => resolve(r), e => e !== MUTEX_ERROR && reject(e));
-});
+const mutexPromise = promise =>
+  new Promise((resolve, reject) => {
+    promise.then(
+      r => resolve(r),
+      e => e !== MUTEX_ERROR && reject(e)
+    );
+  });
 
 /**
  * Main class for accessing Cube.js API
@@ -28,19 +32,21 @@ const mutexPromise = (promise) => new Promise((resolve, reject) => {
  */
 class CubejsApi {
   constructor(apiToken, options) {
-    if (typeof apiToken === 'object') {
+    if (typeof apiToken === "object") {
       options = apiToken;
       apiToken = undefined;
     }
     options = options || {};
     this.apiToken = apiToken;
     this.apiUrl = options.apiUrl || API_URL;
-    this.headers = options.headers || {};
-    this.transport = options.transport || new HttpTransport({
-      authorization: typeof apiToken === 'function' ? undefined : apiToken,
-      apiUrl: this.apiUrl,
-      headers: this.headers
-    });
+    this.fetchOptions = options.fetchOptions || {};
+    this.transport =
+      options.transport ||
+      new HttpTransport({
+        authorization: typeof apiToken === "function" ? undefined : apiToken,
+        apiUrl: this.apiUrl,
+        fetchOptions: this.fetchOptions
+      });
     this.pollInterval = options.pollInterval || 5;
   }
 
@@ -50,14 +56,14 @@ class CubejsApi {
 
   loadMethod(request, toResult, options, callback) {
     const mutexValue = ++mutexCounter;
-    if (typeof options === 'function' && !callback) {
+    if (typeof options === "function" && !callback) {
       callback = options;
       options = undefined;
     }
 
     options = options || {};
 
-    const mutexKey = options.mutexKey || 'default';
+    const mutexKey = options.mutexKey || "default";
     if (options.mutexObj) {
       options.mutexObj[mutexKey] = mutexValue;
     }
@@ -93,7 +99,7 @@ class CubejsApi {
         return null;
       };
 
-      const continueWait = async (wait) => {
+      const continueWait = async wait => {
         if (!unsubscribed) {
           if (wait) {
             await new Promise(resolve => setTimeout(() => resolve(), this.pollInterval * 1000));
@@ -110,7 +116,7 @@ class CubejsApi {
         return continueWait(true);
       }
       const body = await response.json();
-      if (body.error === 'Continue wait') {
+      if (body.error === "Continue wait") {
         await checkMutex();
         if (options.progressCallback) {
           options.progressCallback(new ProgressResult(body));
@@ -165,7 +171,7 @@ class CubejsApi {
   }
 
   async updateTransportAuthorization() {
-    if (typeof this.apiToken === 'function') {
+    if (typeof this.apiToken === "function") {
       const token = await this.apiToken();
       if (this.transport.authorization !== token) {
         this.transport.authorization = token;
@@ -203,7 +209,7 @@ class CubejsApi {
   load(query, options, callback) {
     return this.loadMethod(
       () => this.request(`load`, { query }),
-      (body) => new ResultSet(body),
+      body => new ResultSet(body),
       options,
       callback
     );
@@ -219,7 +225,7 @@ class CubejsApi {
   sql(query, options, callback) {
     return this.loadMethod(
       () => this.request(`sql`, { query }),
-      (body) => new SqlQuery(body),
+      body => new SqlQuery(body),
       options,
       callback
     );
@@ -234,7 +240,7 @@ class CubejsApi {
   meta(options, callback) {
     return this.loadMethod(
       () => this.request(`meta`),
-      (body) => new Meta(body),
+      body => new Meta(body),
       options,
       callback
     );
@@ -243,7 +249,7 @@ class CubejsApi {
   subscribe(query, options, callback) {
     return this.loadMethod(
       () => this.request(`subscribe`, { query }),
-      (body) => new ResultSet(body),
+      body => new ResultSet(body),
       { ...options, subscribe: true },
       callback
     );
